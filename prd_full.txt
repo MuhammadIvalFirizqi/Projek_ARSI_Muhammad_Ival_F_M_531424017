@@ -1,0 +1,298 @@
+[Heading 1] PRD — Aplikasi Manajemen Proyek Sistem Informasi (Gantt Chart Interaktif dan Real-time)
+[Normal] Draft v2.0 · 8 Oktober 2026 · Sistem acuan: GanttProject 2.7 · Teknologi: Laravel
+[Heading 2] 1. Ringkasan Produk
+[Normal] Aplikasi manajemen proyek untuk merencanakan dan menjadwalkan pembangunan perangkat lunak (proyek sistem informasi). Inti aplikasi adalah Gantt chart: diagram batang yang menggambarkan kapan sebuah kegiatan dimulai dan kapan selesai. Selain Gantt chart, aplikasi menyediakan Resources chart (siapa mengerjakan apa) dan PERT chart (hubungan antar kegiatan).
+[Normal] PRD ini disusun dari dua dokumen dan ringkasan fitur dari video tutorial: materi "Aplikasi manajemen proyek sistem informasi" (struktur aplikasi, alur membuat proyek, contoh penjadwalan) dan "list gambar UI" (8 tangkapan layar: tab Gantt, Resources Chart, PERT chart, menu Project, menu Edit, menu View, dialog Task Properties, dialog Resources).
+[Heading 3] Tiga Prinsip Produk
+=== TABLE ===
+Prinsip | Arti bagi produk
+Interaktif | Jadwal diubah langsung pada tampilan: geser batang, tarik tepi untuk mengubah durasi, tarik garis untuk dependensi, edit di tempat. Tidak ada dialog yang wajib dibuka dan tidak ada muat ulang halaman.
+Real-time | Setiap perubahan pada satu proyek tampil seketika di layar semua orang yang sedang membuka proyek yang sama, lewat WebSocket.
+Laravel | Seluruh sisi server memakai Laravel: API, validasi, penyimpanan (MySQL), dan siaran peristiwa real-time (Laravel Reverb dengan Laravel Echo). Antarmuka disajikan dari proyek Laravel yang sama.
+=== END TABLE ===
+[Heading 2] 2. Latar Belakang dan Masalah
+[List Paragraph] Pembangunan perangkat lunak melewati banyak tahap yang saling bergantung. Tanpa jadwal visual, tim sulit melihat kapan tahap dimulai, selesai, dan tumpang tindih.
+[List Paragraph] Perhitungan hari kerja manual rawan salah karena harus memperhitungkan akhir pekan dan hari libur (contoh: kegiatan 5 hari kerja yang melewati weekend tidak berakhir tepat 5 hari kalender kemudian).
+[List Paragraph] Pembagian anggota tim ke kegiatan sering tidak terdokumentasi sehingga beban kerja tidak terlihat.
+[Heading 2] 3. Tujuan dan Metrik Keberhasilan
+=== TABLE ===
+Tujuan | Metrik
+Pengguna dapat membuat proyek baru lengkap dengan kalender kerja | Proyek pertama selesai dibuat dalam ≤ 5 menit
+Jadwal dihitung otomatis dengan benar | 100% tanggal selesai sesuai aturan weekend dan hari libur pada kasus uji
+Aplikasi terasa interaktif | Menggeser batang atau mengubah durasi memperbarui seluruh tampilan tanpa memuat ulang halaman, dalam < 100 ms untuk proyek hingga 500 kegiatan
+Perubahan tim terlihat langsung (real-time) | Perubahan satu pengguna tampil di layar pengguna lain pada proyek yang sama dalam ≤ 1 detik
+Pembagian tugas ke anggota tim terlihat jelas | Setiap kegiatan dapat ditugaskan ke ≥ 1 resource dan tampil di Resources chart
+Jadwal dapat dibagikan | Proyek dibuka bersama lewat tautan, tersimpan otomatis, dan dapat diekspor tanpa kehilangan data
+=== END TABLE ===
+[Heading 2] 4. Pengguna Sasaran
+=== TABLE ===
+Persona | Kebutuhan utama
+Manajer proyek / ketua tim | Membuat jadwal, mengatur dependensi, memantau progres, dan melihat perubahan tim secara langsung
+Anggota tim (analis, desainer, programmer, penguji) | Melihat kegiatan yang menjadi tanggung jawabnya, tenggat waktunya, dan perubahan jadwal seketika
+Mahasiswa / pelajar rekayasa perangkat lunak | Belajar menyusun perencanaan proyek perangkat lunak dengan tahapan standar
+=== END TABLE ===
+[Heading 2] 5. Ruang Lingkup
+[Normal] Dalam lingkup (sesuai dokumen acuan)
+[List Paragraph] Pembuatan proyek baru dan pengaturan kalender kerja
+[List Paragraph] Manajemen kegiatan (task) beserta properti dan sub-kegiatan
+[List Paragraph] Ketergantungan tugas (Finish-to-Start, Start-to-Start) dengan delay
+[List Paragraph] Manajemen resource (nama, kontak, peran, gaji, cuti) dan penugasan satu atau beberapa anggota ke kegiatan
+[List Paragraph] Tiga tampilan: Gantt chart, Resources chart, PERT chart (network diagram)
+[List Paragraph] Interaksi langsung pada timeline: geser dan ubah ukuran batang, edit langsung di daftar kegiatan, zoom dan scroll mulus
+[List Paragraph] Kolaborasi real-time pada proyek yang sama: siaran perubahan, penanda kehadiran, penanda kegiatan yang sedang diedit, penyelesaian konflik
+[List Paragraph] Analisis jalur kritis (critical path)
+[List Paragraph] Backend Laravel dengan penyimpanan proyek di MySQL, tanpa login
+[List Paragraph] Simpan otomatis, ekspor, dan cetak proyek
+[List Paragraph] Pengaturan tampilan dan format tanggal
+[Normal] Di luar lingkup (versi 1.0)
+[List Paragraph] Penagihan, akuntansi, dan manajemen anggaran lanjutan
+[List Paragraph] Integrasi dengan alat pihak ketiga (Jira, Trello, dan sejenisnya)
+[List Paragraph] Aplikasi mobile native
+[List Paragraph] Login, peran, dan hak akses per pengguna (versi 1.0 tanpa login)
+[List Paragraph] Chat, komentar, dan notifikasi email atau push
+[Heading 2] 6. Struktur Aplikasi
+[Normal] Aplikasi terdiri dari tiga bagian utama, mengikuti dokumen acuan.
+=== TABLE ===
+Bagian | Isi
+Bagian 1: Menu | Bilah menu dan toolbar: Project, Edit, View, Task, Resource, Help
+Bagian 2: Task List | Panel kiri dengan tab "Gantt" (daftar kegiatan, kolom Name, Begin date, End date) dan tab "Resources" (daftar anggota tim, kolom Name, Default role)
+Bagian 3: Schedule Display | Panel kanan berisi timeline: batang Gantt, skala tanggal, zoom, penanda hari libur
+=== END TABLE ===
+[Normal] Tata letak layar utama: bilah menu di atas, toolbar ikon (buka, simpan, properti, hapus, potong, salin, tempel, undo, redo) dengan kolom pencarian di kanan, tab tampilan (Gantt, Resources Chart, PERT chart), lalu panel Task List di kiri dan Schedule Display di kanan, serta status bar di bawah.
+[Heading 2] 7. Kebutuhan Fungsional
+[Normal] Prioritas: P0 wajib untuk MVP, P1 penting, P2 pengembangan lanjutan.
+[Heading 3] 7.1 Menu Project
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-01 | Membuat proyek baru (New) lewat wizard dua langkah | P0
+FR-02 | Wizard langkah 1: isian nama proyek, nama organisasi, alamat web, dan deskripsi (narasi pembangunan perangkat lunak) | P0
+FR-03 | Wizard langkah 2: pengaturan kalender kerja (lihat 7.2) | P0
+FR-04 | Menyimpan proyek (Save, Save As) dengan nama pilihan pengguna, misalnya "projek 1" | P0
+FR-05 | Membuka proyek yang tersimpan (Open) dan daftar Recent Projects | P0
+FR-06 | Mengubah properti proyek (Properties) | P1
+FR-07 | Impor dan ekspor proyek (misalnya ekspor ke PDF, gambar, atau CSV) | P1
+FR-08 | Cetak dan pratinjau cetak (Print, Print Preview) | P1
+FR-09 | Web Server: membagikan jadwal lewat tautan | P2
+FR-10 | Pintasan keyboard: Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+P, Ctrl+Q | P1
+=== END TABLE ===
+[Heading 3] 7.2 Kalender dan Hari Libur
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-11 | "Choose weekend": pengguna mencentang hari yang dianggap akhir pekan | P0
+FR-12 | "On weekends": pilihan (a) no task can run atau (b) all task run as on other days | P0
+FR-13 | "Holiday calendar": pilihan none atau custom | P0
+FR-14 | Hari libur custom bertipe One-off (sekali pada tanggal tertentu) atau Recurring (berulang tiap tahun pada tanggal yang sama) | P0
+FR-15 | Tombol Add dan Delete untuk menambah dan menghapus hari libur | P0
+FR-16 | Hari libur dan weekend ditampilkan sebagai kolom berwarna abu-abu di Schedule Display | P1
+=== END TABLE ===
+[Heading 3] 7.3 Menu Edit
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-17 | Undo dan Redo (mis. "Undo Task Properties") | P0
+FR-18 | Refresh (F5) | P1
+FR-19 | Search (Ctrl+F) pada daftar kegiatan | P1
+FR-20 | Cut, Copy, Paste kegiatan | P0
+FR-21 | Settings: format tanggal (bawaan bulan/tanggal/tahun, dapat diubah), ukuran font, warna batang, properti kegiatan | P1
+=== END TABLE ===
+[Heading 3] 7.4 Menu View
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-22 | Tampilan Gantt chart: daftar kegiatan dan batang timeline pada kalender | P0
+FR-23 | Tampilan Resources chart: daftar anggota tim dan beban kerja pada timeline | P0
+FR-24 | Tampilan PERT chart / network diagram: setiap kegiatan sebagai node berisi nama, Start, End, Duration, dihubungkan garis panah sesuai dependensi | P0
+FR-25 | Kontrol timeline: Zoom In, Zoom Out, Today, Past, Future | P0
+FR-26 | Analisis jalur kritis (Show critical path): sistem menghitung dan menyorot kegiatan yang jika terlambat membuat seluruh proyek molor, pada Gantt chart dan PERT chart | P0
+FR-41 | Baselines: membandingkan jadwal rencana dengan jadwal terkini | P2
+=== END TABLE ===
+[Heading 3] 7.5 Menu Task dan Properti Kegiatan
+[Normal] Dialog "Properties for task" memiliki empat tab: General, Predecessors, Resources, Custom Columns.
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-27 | Membuat kegiatan baru (menu Task > New Task atau klik kanan pada Task List) | P0
+FR-28 | Mengubah properti lewat klik kanan > Task Properties | P0
+FR-29 | Tab General: Name, Milestone (kotak centang), Begin date, End date, Duration, Additional constraint, Priority (mis. Normal), Progress (0–100), Show in timeline, Shape, Colors, Web Link, Edit Notes | P0
+FR-30 | End date dihitung otomatis dari Begin date dan Duration dengan memperhitungkan weekend dan hari libur | P0
+FR-31 | Tab Predecessors: mengatur urutan kerja dengan hubungan Finish-to-Start (kegiatan menunggu kegiatan lain selesai) atau Start-to-Start (kegiatan dimulai bersamaan dengan kegiatan lain) | P0
+FR-42 | Delay: jeda waktu (hari kerja) antar kegiatan yang berhubungan | P0
+FR-32 | Tab Resources: menugaskan satu atau beberapa anggota tim ke kegiatan yang sudah dibuat | P0
+FR-33 | Tab Custom Columns: kolom tambahan buatan pengguna | P2
+FR-34 | Sub-kegiatan: memasukkan tugas kecil ke dalam tugas utama yang lebih besar, sehingga tahap besar dapat dirinci sesuai anggota tim | P0
+=== END TABLE ===
+[Heading 3] 7.6 Menu Resource
+[Normal] Dialog "Resources" memiliki tiga tab: General, Days off, Custom Columns.
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-35 | Menambah, mengubah, dan menghapus resource (anggota tim pengembang) | P0
+FR-36 | Tab General: Name, Phone, Mail (kontak), Default role (peran atau posisi, mis. analis, desainer, programmer, penguji) | P0
+FR-37 | Resource payment rate: Standard rate (gaji anggota tim), bawaan 0 | P0
+FR-38 | Tab Days off: cuti atau hari libur pribadi per anggota tim | P0
+FR-39 | Tab Custom Columns | P2
+=== END TABLE ===
+[Heading 3] 7.7 Menu Help
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-40 | Menu bantuan: panduan penggunaan dan informasi versi aplikasi | P1
+=== END TABLE ===
+[Heading 3] 7.8 Templat Tahapan Pembangunan Perangkat Lunak
+[Normal] Agar sesuai konteks sistem informasi, aplikasi menyediakan templat enam tahap standar (P1), yang dapat dimuat saat membuat proyek baru dan diubah bebas:
+=== TABLE ===
+No | Tahap | Keterangan
+1 | Requirement gathering | Analisis kebutuhan lewat survei, tanya jawab, dan wawancara pengguna
+2 | System analysis | Menganalisis spesifikasi yang didapat bersama anggota tim
+3 | Design | Perancangan antarmuka, basis data, pseudo code, dan lain-lain
+4 | Implementation | Fase coding
+5 | Testing | Pengujian input/output (black box) dan pengecekan kode (white box)
+6 | Deploy and implementation | Instalasi perangkat lunak yang telah dibuat
+=== END TABLE ===
+[Heading 3] 7.9 Interaksi Langsung dan Penyimpanan Proyek
+[Normal] Agar aplikasi interaktif, perubahan jadwal dilakukan langsung pada tampilan (tanpa harus membuka dialog), dan seluruh tampilan diperbarui seketika.
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-43 | Geser batang kegiatan (drag) di Gantt chart untuk mengubah tanggal mulai; kegiatan yang bergantung terhitung ulang langsung | P0
+FR-44 | Tarik tepi batang untuk mengubah durasi; nilai Duration dan End date ikut berubah | P0
+FR-45 | Tarik penanda progres pada batang untuk mengubah persentase Progress | P1
+FR-46 | Buat dependensi dengan menarik garis dari satu batang ke batang kegiatan lain | P1
+FR-47 | Edit langsung pada Task List (klik ganda sel Name, Begin date, End date) tanpa membuka dialog | P0
+FR-48 | Ubah urutan dan tingkat sub-kegiatan dengan drag and drop pada Task List | P1
+FR-49 | Zoom dan scroll timeline yang mulus (roda mouse dan tombol Zoom In/Out); Task List dan timeline selalu sejajar | P0
+FR-50 | Gantt chart, Resources chart, dan PERT chart tersinkron seketika tanpa memuat ulang halaman | P0
+FR-51 | Tooltip pada batang dan node berisi nama, tanggal, durasi, progres, dan penanggung jawab | P1
+FR-52 | Menu klik kanan (konteks) pada kegiatan dan resource | P1
+FR-53 | Setiap perubahan langsung tersimpan ke server tanpa tombol simpan, dengan indikator status penyimpanan; menjadi dasar real-time | P0
+FR-54 | Daftar proyek: setelah aplikasi dibuka (tanpa login), tampil daftar proyek tersimpan di server, lalu pengguna membuat atau membuka proyek | P0
+=== END TABLE ===
+[Heading 3] 7.10 Kolaborasi Real-time
+[Normal] Semua pengguna yang membuka proyek yang sama bekerja pada jadwal yang sama dan saling melihat perubahan seketika. Tidak ada akun; pengguna hanya mengisi nama tampilan saat membuka proyek untuk penanda kehadiran.
+=== TABLE ===
+ID | Kebutuhan | Prioritas
+FR-55 | Perubahan apa pun (tambah, ubah, hapus kegiatan, dependensi, resource, penugasan, kalender) disiarkan lewat WebSocket ke semua pengguna yang membuka proyek yang sama dan tampil tanpa memuat ulang | P0
+FR-56 | Perubahan sampai ke layar pengguna lain dalam ≤ 1 detik pada koneksi normal | P0
+FR-57 | Sinkronisasi dengan nomor revisi per proyek: server menjadi sumber kebenaran, dan klien yang tertinggal otomatis mengambil perubahan yang terlewat | P0
+FR-58 | Penyelesaian konflik dasar: jika dua orang mengubah kolom yang sama bersamaan, perubahan yang tiba terakhir di server berlaku dan semua layar menampilkan nilai yang sama | P0
+FR-59 | Penanda kehadiran (presence): daftar pengguna yang sedang membuka proyek, masing-masing dengan nama tampilan dan warna | P1
+FR-60 | Penanda kegiatan atau sel yang sedang diedit orang lain, lengkap dengan nama pengeditnya | P1
+FR-61 | Pemberitahuan singkat saat perubahan orang lain menimpa perubahan Anda | P1
+FR-62 | Koneksi terputus: aplikasi menampilkan status terputus, menahan perubahan dalam antrean, lalu mengirim ulang dan menyinkronkan setelah tersambung kembali | P1
+FR-63 | Undo dan redo berlaku untuk perubahan milik pengguna sendiri, dan hasilnya ikut disiarkan | P1
+FR-64 | Pratinjau langsung: saat orang lain menggeser batang, batang bergerak di layar Anda secara real-time | P2
+=== END TABLE ===
+[Heading 2] 8. Aturan Bisnis Penjadwalan
+[List Paragraph] Hari kerja dihitung dari tanggal mulai dengan melewati hari weekend (jika opsi no task can run aktif) dan hari libur terdaftar.
+[List Paragraph] Durasi dinyatakan dalam hari kerja, bukan hari kalender.
+[List Paragraph] Finish-to-Start: kegiatan B baru boleh dimulai setelah predecessor A selesai. Start-to-Start: kegiatan B dimulai bersamaan dengan mulainya A.
+[List Paragraph] Delay menambah jeda hari kerja antara kegiatan yang berhubungan (contoh: analisis sistem dimulai setelah 3 hari analisis kebutuhan berjalan).
+[List Paragraph] Mengubah tanggal atau durasi satu kegiatan menghitung ulang kegiatan yang bergantung padanya.
+[List Paragraph] Milestone memiliki durasi nol dan ditampilkan dengan penanda khusus.
+[List Paragraph] Tugas utama mencakup sub-kegiatannya: tanggal mulainya adalah yang paling awal dan tanggal selesainya yang paling akhir di antara sub-kegiatan.
+[List Paragraph] Penugasan pada hari cuti anggota tim ditandai sebagai bentrok di Resources chart.
+[List Paragraph] Jalur kritis adalah rangkaian kegiatan berhubungan dengan total durasi terpanjang dari awal hingga akhir proyek; keterlambatan satu kegiatan di jalur ini memundurkan tanggal selesai proyek, dan kegiatannya disorot.
+[Normal] Skenario uji dari dokumen acuan (proyek web untuk PT XYZ, 30 Juni – 31 Juli 2015; weekend tidak ada kegiatan; 17 Juli hari libur custom):
+=== TABLE ===
+Kegiatan | Mulai | Selesai | Durasi (hari kerja) | Catatan
+Requirement gathering | 30 Jun 2015 | 6 Jul 2015 | 5 | 4–5 Jul weekend
+System analysis | 3 Jul 2015 | 14 Jul 2015 | 8 | Mulai setelah 3 hari kegiatan sebelumnya; 11–12 Jul weekend
+Design | 8 Jul 2015 | 20 Jul 2015 | 7 | Mulai setelah 5 hari analisis sistem; 11–12 Jul weekend, 17 Jul libur, 18–19 Jul weekend
+Implementation | 21 Jul 2015 | 27 Jul 2015 | 5 | 25–26 Jul weekend
+Testing | 28 Jul 2015 | 29 Jul 2015 | 2 | Tepat setelah implementasi
+Deploy and implementation | Setelah Testing | Maksimal 31 Jul 2015 | Menyesuaikan | Rincian tidak tercantum di dokumen; perlu dilengkapi
+=== END TABLE ===
+[Normal] Skenario ini dipakai sebagai kasus uji penerimaan untuk mesin penjadwalan.
+[Heading 2] 9. Model Data
+=== TABLE ===
+Entitas | Atribut utama
+Project | id (UUID), nama, organisasi, alamat web, deskripsi, tanggal mulai, format tanggal, revision
+Calendar | id, project_id, hari weekend, aturan weekend (berhenti/lanjut), mode libur (none/custom)
+Holiday | id, calendar_id, nama, tanggal, tipe (one-off/recurring)
+Task | id, project_id, parent_id, nama, milestone, begin_date, end_date, duration, constraint, priority, progress, show_in_timeline, shape, warna, web_link, catatan
+Dependency | id, task_id, predecessor_id, jenis hubungan (Finish-to-Start / Start-to-Start), delay (hari kerja)
+Resource | id, project_id, nama, telepon, email, default_role, standard_rate (gaji)
+ResourceDayOff | id, resource_id, tanggal mulai, tanggal selesai
+Assignment | id, task_id, resource_id, beban (%)
+CustomColumn | id, project_id, target (task/resource), nama, tipe
+ChangeLog | id, project_id, revision, jenis perubahan, objek (task/resource/dependency/calendar), payload, nama_tampilan, waktu
+=== END TABLE ===
+[Normal] Relasi utama: Project memiliki banyak Task dan Resource; Task dan Resource dihubungkan oleh Assignment; Task dihubungkan ke Task lain oleh Dependency.
+[Heading 2] 10. Alur Pengguna Utama
+[Normal] Alur 1: Membuat jadwal proyek pertama
+[List Paragraph] Pilih Project > New, isi nama, organisasi, alamat web, deskripsi, lalu Next.
+[List Paragraph] Atur weekend, aturan kegiatan saat weekend, dan hari libur custom, lalu selesai.
+[List Paragraph] Simpan proyek.
+[List Paragraph] Buat kegiatan lewat Task > New Task, atur nama, tanggal, durasi, prioritas, dan warna di Task Properties.
+[List Paragraph] Tentukan predecessor antar kegiatan.
+[List Paragraph] Tambahkan resource dan tugaskan ke kegiatan.
+[List Paragraph] Periksa hasil di tab Gantt, Resources Chart, dan PERT chart.
+[Normal] Alur 2: Mengubah jadwal Klik kanan kegiatan > Task Properties > ubah durasi atau tanggal > Ok > aplikasi menghitung ulang kegiatan terkait > Undo bila perlu.
+[Normal] Alur 3: Mempresentasikan jadwal Atur zoom dan format tampilan di Settings > Print Preview > Print atau ekspor.
+[Normal] Alur 4: Bekerja bersama secara real-time Dua orang membuka proyek yang sama dari daftar proyek, mengisi nama tampilan, lalu keduanya melihat daftar pengguna aktif. Saat satu orang menggeser batang atau mengedit sel, kegiatan itu tampil bertanda di layar lain dan hasilnya muncul seketika di semua tampilan.
+[Heading 2] 11. Deskripsi Layar
+=== TABLE ===
+Layar | Elemen utama
+Layar utama, tab Gantt | Menu, toolbar, kolom pencarian; Task List (Name, Begin date, End date); timeline berskala hari dengan Zoom In/Out, Today, Past, Future, Show critical path, Baselines; kolom abu-abu untuk weekend; daftar pengguna aktif dan indikator status koneksi real-time di status bar
+Tab Resources Chart | Daftar resource (Name, Default role); timeline beban kerja di kanan; tombol panah naik/turun untuk mengurutkan
+Tab PERT chart | Kanvas berisi kotak kegiatan (nama, Start, End, Duration) dan panah dependensi
+Menu Project | Properties, New, Open, Recent Projects, Save, Save As, Import, Export, Web Server, Print, Print Preview, Quit
+Menu Edit | Undo, Redo, Refresh, Search, Cut, Copy, Paste, Settings
+Menu View | Opsi tampilan PERT chart (centang)
+Dialog Task Properties | Tab General, Predecessors, Resources, Custom Columns; area Edit Notes di kanan; tombol Ok dan Cancel
+Dialog Resources | Tab General (Name, Phone, Mail, Default role, Standard rate), Days off, Custom Columns
+=== END TABLE ===
+[Heading 2] 12. Kebutuhan Non-Fungsional
+=== TABLE ===
+Aspek | Kebutuhan
+Platform | Aplikasi web interaktif yang berjalan di peramban modern, desktop-first
+Arsitektur | Laravel (versi LTS terbaru) sebagai backend sekaligus penyaji antarmuka; antarmuka interaktif memakai React lewat Inertia.js; basis data MySQL; data lewat REST/JSON
+Real-time | Laravel Reverb (WebSocket) dengan Laravel Broadcasting di server dan Laravel Echo di klien; satu channel per proyek; kapasitas awal 20 pengguna bersamaan per proyek
+Interaktivitas | Geser, ubah durasi, dan buat dependensi tampil seketika tanpa memuat ulang halaman; respons visual < 100 ms untuk proyek hingga 500 kegiatan
+Kinerja | Penjadwalan ulang proyek dengan 500 kegiatan selesai < 1 detik; render timeline lancar saat zoom dan scroll; perubahan tersiar ke pengguna lain ≤ 1 detik
+Kegunaan | Pengguna baru dapat membuat jadwal tanpa pelatihan; seluruh menu dan pintasan keyboard konsisten
+Keandalan | Perubahan disimpan ke server pada setiap aksi; undo/redo minimal 50 langkah; tidak ada perubahan hilang saat koneksi terputus sebentar
+Keamanan | Tanpa login: siapa pun yang mengakses alamat aplikasi dapat membuka dan mengubah proyek. ID proyek dan channel WebSocket memakai UUID yang sulit ditebak. Jika dipasang di alamat publik, amankan lewat pengaturan server (mis. proteksi password)
+Deployment | Membutuhkan VPS atau server yang dapat menjalankan proses terus-menerus (Reverb, Supervisor, Nginx, PHP 8.2+, MySQL). Shared hosting biasa tidak cukup untuk WebSocket; alternatifnya layanan WebSocket terkelola (Pusher) agar tetap bisa di shared hosting
+Kompatibilitas data | Ekspor ke PDF, gambar, dan CSV; format tanggal dapat dikonfigurasi
+Bahasa | Antarmuka dwibahasa Indonesia dan Inggris (P2)
+=== END TABLE ===
+[Heading 2] 13. Kriteria Penerimaan (Contoh)
+[List Paragraph] Pembuatan proyek: Jika pengguna menyelesaikan wizard New, maka proyek kosong dengan kalender sesuai pilihan terbentuk dan tersimpan di server.
+[List Paragraph] Perhitungan tanggal: Kegiatan "Requirement gathering" dengan mulai 30 Jun 2015, durasi 5 hari kerja, dan weekend berhenti menghasilkan tanggal selesai 6 Jul 2015.
+[List Paragraph] Hari libur: Setelah hari libur custom 17 Jul 2015 ditambahkan, kegiatan yang melewati tanggal itu tidak menghitung hari tersebut sebagai hari kerja.
+[List Paragraph] Dependensi: Pada hubungan Finish-to-Start dengan delay 2 hari kerja, kegiatan kedua mulai 2 hari kerja setelah kegiatan pertama selesai; pada Start-to-Start, kegiatan kedua mulai bersamaan dengan kegiatan pertama.
+[List Paragraph] Sub-kegiatan: Tugas utama otomatis mencakup rentang tanggal seluruh sub-kegiatannya.
+[List Paragraph] Penugasan: Satu kegiatan dapat ditugaskan ke dua anggota tim atau lebih, dan kegiatan itu muncul pada Resources chart masing-masing.
+[List Paragraph] Jalur kritis: Jika durasi kegiatan di jalur kritis diperpanjang, tanggal selesai proyek ikut mundur dan jalur tersebut tersorot di Gantt chart dan PERT chart.
+[List Paragraph] Geser batang: Saat batang kegiatan digeser ke tanggal lain, tanggal mulai dan selesai berubah, kegiatan yang bergantung terhitung ulang, dan semua tampilan diperbarui tanpa memuat ulang halaman.
+[List Paragraph] Ubah durasi dengan tarik: Saat tepi batang ditarik, nilai Duration dan End date di Task List dan Task Properties ikut berubah.
+[List Paragraph] Edit langsung: Mengubah nama atau tanggal lewat klik ganda pada Task List langsung tampak pada batang Gantt dan node PERT.
+[List Paragraph] Sinkron antar tampilan: Perubahan durasi di Task Properties langsung tampak di tab Gantt, Resources Chart, dan PERT chart.
+[List Paragraph] Real-time: Saat pengguna A mengubah durasi kegiatan, pengguna B yang membuka proyek yang sama melihat batang Gantt, node PERT, dan Resources chart berubah dalam ≤ 1 detik tanpa memuat ulang.
+[List Paragraph] Konflik: Jika A dan B mengubah kolom yang sama bersamaan, kedua layar akhirnya menampilkan nilai yang sama, yaitu nilai yang tiba terakhir di server.
+[List Paragraph] Kehadiran: Daftar pengguna aktif bertambah saat orang baru membuka proyek dan berkurang saat ia menutupnya.
+[List Paragraph] Koneksi terputus: Setelah koneksi pulih, perubahan yang dibuat saat terputus terkirim dan layar tersinkron dengan keadaan terbaru.
+[List Paragraph] Akses proyek: Saat aplikasi dibuka, daftar proyek tersimpan langsung tampil tanpa halaman login, dan proyek yang dipilih dapat dibuka serta diubah.
+[List Paragraph] Undo/Redo: Setelah mengubah properti kegiatan, Edit > Undo mengembalikan nilai sebelumnya.
+[Heading 2] 14. Rencana Rilis
+=== TABLE ===
+Fase | Isi
+MVP | Semua kebutuhan P0: proyek baru, kalender, kegiatan dan sub-kegiatan, dependensi (Finish-to-Start, Start-to-Start, delay), resource (kontak, peran, gaji, cuti), penugasan, tiga tampilan, jalur kritis, interaksi inti (geser batang, ubah durasi dengan tarik, edit langsung, zoom dan scroll), simpan otomatis, dan kolaborasi real-time inti (siaran perubahan lewat Laravel Reverb, nomor revisi, penyelesaian konflik dasar)
+Rilis 1.1 | Kebutuhan P1: penanda kehadiran, penanda kegiatan yang sedang diedit, penanganan koneksi terputus, buat dependensi dengan menarik garis, drag progres dan urutan kegiatan, tooltip, menu klik kanan, templat enam tahap, ekspor dan cetak, pengaturan tampilan, pencarian
+Rilis 2.0 | Kebutuhan P2: pratinjau geser real-time, baselines, custom columns, web server, login, berbagi proyek dan peran, dwibahasa
+=== END TABLE ===
+[Heading 2] 15. Asumsi, Risiko, dan Pertanyaan Terbuka
+[Normal] Asumsi
+[List Paragraph] Aplikasi dibangun dengan Laravel sebagai fondasi utama; antarmuka interaktif memakai React lewat Inertia.js dalam satu proyek Laravel. Dokumen acuan menggambarkan aplikasi desktop (GanttProject 2.7); fungsinya dipertahankan lalu disesuaikan ke web.
+[List Paragraph] Tanpa login: tidak ada akun pengguna. Data proyek tersimpan di server dan dibuka bersama oleh siapa pun yang mengakses proyek tersebut; nama tampilan diisi saat membuka proyek hanya untuk penanda kehadiran.
+[List Paragraph] Real-time memakai Laravel Reverb sehingga target deployment adalah VPS; Pusher disiapkan sebagai alternatif jika harus memakai shared hosting.
+[List Paragraph] Perhitungan jadwal berjalan di frontend agar respons instan dan diulang di Laravel sebagai sumber kebenaran; keduanya diuji dengan skenario di bagian 8.
+[List Paragraph] Jenis hubungan dependensi yang wajib adalah Finish-to-Start dan Start-to-Start dengan delay; Finish-to-Finish dan Start-to-Finish belum diminta dan masuk P2.
+[Normal] Risiko
+[List Paragraph] Mesin penjadwalan (hari kerja, libur, dependensi) adalah bagian paling rawan bug; perlu pengujian otomatis memakai skenario di bagian 8.
+[List Paragraph] Logika jadwal ada di dua tempat (frontend dan Laravel) sehingga bisa berbeda hasil; uji keduanya dengan kasus uji yang sama.
+[List Paragraph] Render Gantt dan PERT chart yang besar dapat lambat tanpa virtualisasi.
+[List Paragraph] Dua orang mengedit hal yang sama bersamaan dapat membingungkan; penyelesaian konflik dasar (nilai terakhir menang) perlu disertai penanda kegiatan yang sedang diedit.
+[List Paragraph] Tanpa login, siapa pun yang tahu alamat proyek dapat mengubahnya.
+[List Paragraph] Server Reverb harus selalu berjalan; perlu Supervisor dan pemantauan.
+[Normal] Pertanyaan terbuka
+[List Paragraph] Apakah dibutuhkan kompatibilitas impor berkas .gan dari GanttProject?
+[List Paragraph] Rincian tahap Deploy and implementation pada dokumen acuan terpotong; berapa durasi dan tanggalnya?
+[List Paragraph] Apakah tersedia VPS untuk menjalankan Laravel Reverb, atau harus shared hosting (sehingga memakai Pusher)?
+[List Paragraph] Apakah antarmuka boleh memakai React lewat Inertia.js, atau Anda ingin Livewire atau Blade murni?
+[List Paragraph] Berapa pengguna bersamaan per proyek yang diharapkan (asumsi saat ini 20)?
