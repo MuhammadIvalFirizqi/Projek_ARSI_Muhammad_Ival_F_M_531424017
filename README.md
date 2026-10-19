@@ -25,6 +25,12 @@ Catatan:
 - Tes: `composer run test` (atau `php artisan test`).
 - Periksa alur lengkap di browser: `node scripts/verify.mjs` (butuh Chrome, server sedang berjalan).
 
+## Tampilan aplikasi
+
+![Screenshoot 1 — tampilan aplikasi](screenshoot1.png)
+
+![Screenshoot 2 — tampilan aplikasi](screenshoot2.png)
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
