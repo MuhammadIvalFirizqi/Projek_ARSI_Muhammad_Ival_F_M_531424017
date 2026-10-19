@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { addDays, diffDays, formatDisplayDate, parseDate, today } from '../lib/dates';
+import { dependencyRoute } from '../lib/edges';
 import { barGeometry, ROW_HEIGHT } from '../lib/gantt';
 import { WorkingCalendar } from '../lib/schedule';
 
@@ -203,6 +204,13 @@ export default function GanttChart({
                         <marker id="arrow-critical" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
                             <path d="M0,0 L7,3 L0,6 Z" fill="#dc2626" />
                         </marker>
+                        {/* kepala panah kecil untuk ruas masuk yang sempit (kegiatan berdekatan) */}
+                        <marker id="arrow-small" markerWidth="6" markerHeight="6" refX="5" refY="2.5" orient="auto">
+                            <path d="M0,0 L5,2.5 L0,5 Z" fill="#64748b" />
+                        </marker>
+                        <marker id="arrow-critical-small" markerWidth="6" markerHeight="6" refX="5" refY="2.5" orient="auto">
+                            <path d="M0,0 L5,2.5 L0,5 Z" fill="#dc2626" />
+                        </marker>
                     </defs>
                     {state.dependencies.map((dep) => {
                         const fromIndex = rowIndex[dep.predecessor_id];
@@ -219,19 +227,24 @@ export default function GanttChart({
                         const x2 = toGeom.x;
                         const y2 = toIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
                         const critical = showCritical && from.critical && to.critical;
-                        const midX = Math.max(x1 + 6, Math.min(x2 - 6, x1 + 12));
-                        const d = x2 >= x1
-                            ? `M ${x1} ${y1} H ${midX} V ${y2} H ${x2 - 4}`
-                            : `M ${x1} ${y1} H ${x1 + 10} V ${(y1 + y2) / 2} H ${x2 - 14} V ${y2} H ${x2 - 4}`;
+                        // rute dibulatkan dengan ruas lurus tetap utuh sebelum
+                        // kepala panah. Kegiatan berurutan (selisih 1 hari) berarti
+                        // jarak antar batang 0px: langsung belok dengan ruas masuk
+                        // dipinjam dari badan batang sumber; hanya kegiatan yang
+                        // benar-benar menimpa yang memutar lewat sisi baris
+                        const route = dependencyRoute(x1, y1, x2, y2, {
+                            laneOffset: ROW_HEIGHT * 0.4,
+                            sourceWidth: fromGeom.width,
+                        });
                         return (
                             <path
                                 key={dep.id}
-                                d={d}
+                                d={route.d}
                                 fill="none"
                                 stroke={critical ? '#dc2626' : '#64748b'}
                                 strokeWidth={1.2}
                                 strokeDasharray={dep.type === 'SS' ? '4 3' : undefined}
-                                markerEnd={`url(#${critical ? 'arrow-critical' : 'arrow'})`}
+                                markerEnd={`url(#arrow${critical ? '-critical' : ''}${route.compact ? '-small' : ''})`}
                             />
                         );
                     })}

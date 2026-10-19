@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { formatDisplayDate } from '../lib/dates';
+import { ARROW_RUN, roundedPath } from '../lib/edges';
 
 const NODE_W = 190;
 const NODE_H = 92;
@@ -100,9 +101,20 @@ export default function PertChart({
                         const y2 = edge.to.y + NODE_H / 2;
                         const critical = showCritical && edge.from.task.critical && edge.to.task.critical;
                         const midX = (x1 + x2) / 2;
+                        // jalur memutar untuk node yang berdekatan/bertumpuk: dilewatkan
+                        // lewat ruang kosong di sisi node tujuan, sehingga kepala panah
+                        // selalu menghadap kanan dengan ruas lurus yang utuh
+                        const laneY = y2 + (y2 >= y1 ? 1 : -1) * (NODE_H / 2 + GAP_Y / 2);
                         const d = x2 > x1
-                            ? `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2 - 6} ${y2}`
-                            : `M ${x1} ${y1} H ${x1 + 30} V ${(y1 + y2) / 2} H ${x2 - 40} V ${y2} H ${x2 - 6}`;
+                            ? `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2 - ARROW_RUN} ${y2} L ${x2} ${y2}`
+                            : roundedPath([
+                                [x1, y1],
+                                [x1 + 30, y1],
+                                [x1 + 30, laneY],
+                                [x2 - 40, laneY],
+                                [x2 - 40, y2],
+                                [x2, y2],
+                            ]);
                         return (
                             <path
                                 key={edge.id}
