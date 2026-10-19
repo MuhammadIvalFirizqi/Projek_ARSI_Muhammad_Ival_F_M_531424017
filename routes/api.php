@@ -29,6 +29,11 @@ Route::post('/projects/{project}/resources', [ResourceController::class, 'store'
 Route::put('/projects/{project}/resources/{resource}', [ResourceController::class, 'update']);
 Route::delete('/projects/{project}/resources/{resource}', [ResourceController::class, 'destroy']);
 
+// Kolom tambahan buatan pengguna (FR-33 task, FR-39 resource)
+Route::post('/projects/{project}/custom-columns', [\App\Http\Controllers\CustomColumnController::class, 'store']);
+Route::put('/projects/{project}/custom-columns/{customColumn}', [\App\Http\Controllers\CustomColumnController::class, 'update']);
+Route::delete('/projects/{project}/custom-columns/{customColumn}', [\App\Http\Controllers\CustomColumnController::class, 'destroy']);
+
 // Ekspor (FR-07)
 Route::get('/projects/{project}/export/{format}', [ExportController::class, 'export']);
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\ProjectChanged;
 use App\Models\Calendar;
 use App\Models\ChangeLog;
+use App\Models\CustomColumn;
 use App\Models\Dependency;
 use App\Models\Holiday;
 use App\Models\Project;
@@ -235,6 +236,7 @@ class ProjectService
         $tasks = $project->tasks()->get();
         $dependencies = $project->dependencies()->get();
         $resources = $project->resources()->with('daysOff')->get();
+        $customColumns = $project->customColumns()->get();
 
         $computed = $this->computedFor($project);
         if ($computed === null) {
@@ -321,7 +323,15 @@ class ProjectService
                     'start_date' => $dayOff->start_date->format('Y-m-d'),
                     'end_date' => $dayOff->end_date->format('Y-m-d'),
                 ])->values(),
+                'custom_values' => $resource->custom_values ?? [],
                 'assignments' => $this->assignmentsFor($assignments, $resource->id),
+            ])->values(),
+            'custom_columns' => $customColumns->map(fn (CustomColumn $column) => [
+                'id' => $column->id,
+                'target' => $column->target,
+                'name' => $column->name,
+                'type' => $column->type,
+                'position' => (int) $column->position,
             ])->values(),
             'project_start' => $computed['project_start'],
             'project_end' => $computed['project_end'],

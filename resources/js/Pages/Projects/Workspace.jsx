@@ -2,13 +2,16 @@ import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import {
+    createCustomColumnAction,
     createDependencyAction,
     createResourceAction,
     createTaskAction,
+    deleteCustomColumnAction,
     deleteDependencyAction,
     deleteResourceAction,
     deleteTaskAction,
     patchCalendarAction,
+    patchCustomColumnAction,
     patchDependencyAction,
     patchProjectAction,
     patchResourceAction,
@@ -132,6 +135,14 @@ export default function Workspace({ state: initialState }) {
     }, [ws]);
 
     const removeResource = useCallback((id) => ws.run(deleteResourceAction(ws.state, id)), [ws]);
+
+    // ------------------------------------------------------ kolom tambahan
+    const createCustomColumn = useCallback(
+        (draft) => ws.run(createCustomColumnAction(ws.state, draft)), [ws]);
+    const patchCustomColumn = useCallback(
+        (id, patch) => ws.run(patchCustomColumnAction(ws.state, id, patch)), [ws]);
+    const deleteCustomColumn = useCallback(
+        (id) => ws.run(deleteCustomColumnAction(ws.state, id)), [ws]);
 
     // --------------------------------------------------------- papan klip
     const copyTask = useCallback((id, cut = false) => {
@@ -600,6 +611,9 @@ export default function Workspace({ state: initialState }) {
                     onClose={closeDialog}
                     onSave={saveResource}
                     onDelete={removeResource}
+                    onCreateColumn={createCustomColumn}
+                    onPatchColumn={patchCustomColumn}
+                    onDeleteColumn={deleteCustomColumn}
                 />
             )}
             {dialog === 'project' && (

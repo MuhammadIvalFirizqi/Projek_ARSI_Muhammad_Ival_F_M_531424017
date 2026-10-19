@@ -31,6 +31,7 @@ class ResourceController extends Controller
                 'default_role' => $validated['default_role'] ?? null,
                 'standard_rate' => $validated['standard_rate'] ?? 0,
                 'color' => $validated['color'] ?? null,
+                'custom_values' => ($values = $this->sanitizeValues($validated['custom_values'] ?? [])) === [] ? null : $values,
             ]);
 
             $this->syncDaysOff($resource, $validated['days_off'] ?? []);
@@ -58,6 +59,10 @@ class ResourceController extends Controller
                 'standard_rate' => array_key_exists('standard_rate', $validated) ? $validated['standard_rate'] : $resource->standard_rate,
                 'color' => array_key_exists('color', $validated) ? $validated['color'] : $resource->color,
             ]);
+            if (array_key_exists('custom_values', $validated)) {
+                $values = $this->sanitizeValues($validated['custom_values'] ?? []);
+                $resource->custom_values = $values === [] ? null : $values;
+            }
             $resource->save();
 
             if (array_key_exists('days_off', $validated)) {
@@ -93,7 +98,23 @@ class ResourceController extends Controller
             'days_off' => 'sometimes|array',
             'days_off.*.start_date' => 'required|string|date',
             'days_off.*.end_date' => 'required|string|date',
+            'custom_values' => 'sometimes|nullable|array',
+            'custom_values.*' => 'nullable',
         ]);
+    }
+
+    /** Simpan nilai kolom tambahan: hanya skalar/null dengan kunci string (FR-39). */
+    private function sanitizeValues(?array $values): array
+    {
+        $clean = [];
+        foreach ($values as $key => $value) {
+            if (! is_scalar($value) && $value !== null) {
+                continue;
+            }
+            $clean[(string) $key] = is_string($value) ? mb_substr($value, 0, 1000) : $value;
+        }
+
+        return $clean;
     }
 
     private function syncDaysOff(Resource $resource, array $daysOff): void

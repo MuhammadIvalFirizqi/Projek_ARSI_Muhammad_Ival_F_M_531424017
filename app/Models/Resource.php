@@ -16,7 +16,7 @@ class Resource extends Model
 
     protected $fillable = [
         'id', 'project_id', 'name', 'phone', 'email',
-        'default_role', 'standard_rate', 'color',
+        'default_role', 'standard_rate', 'color', 'custom_values',
     ];
 
     protected static function booted(): void
@@ -28,7 +28,10 @@ class Resource extends Model
 
     protected function casts(): array
     {
-        return ['standard_rate' => 'float'];
+        return [
+            'standard_rate' => 'float',
+            'custom_values' => 'array',
+        ];
     }
 
     public function project(): BelongsTo

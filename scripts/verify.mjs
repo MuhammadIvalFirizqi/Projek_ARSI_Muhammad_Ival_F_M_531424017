@@ -290,6 +290,107 @@ try {
     });
     log('FR-35 resource uji dari dialog dibersihkan', cleanupDialogResource);
 
+    // --------------------------------------------------- FR-39 kolom custom
+    await pageA.bringToFront();
+    await clickByText(pageA, 'button', '+ Resource baru');
+    await sleep(400);
+    await clickByText(pageA, 'button', 'Custom Columns');
+    await sleep(200);
+    await clickByText(pageA, 'button', '+ Add column');
+    await sleep(200);
+    const columnForm = await pageA.evaluate(() => {
+        const input = [...document.querySelectorAll('input')]
+            .find((el) => (el.placeholder || '').includes('Tingkat pengalaman'));
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, 'QA Level');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    });
+    await sleep(200);
+    await clickByText(pageA, 'button', 'Save');
+    await sleep(600);
+    const valueFilled = await pageA.evaluate(() => {
+        const row = [...document.querySelectorAll('tbody tr')]
+            .find((tr) => tr.textContent.includes('QA Level'));
+        const input = row?.querySelector('input[type="text"]');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, 'Senior');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    });
+    await clickByText(pageA, 'button', 'General');
+    await sleep(200);
+    await pageA.evaluate(() => {
+        const labels = [...document.querySelectorAll('label')];
+        const input = labels.find((el) => el.textContent.includes('Name'))?.querySelector('input');
+        if (!input) return;
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, 'QA Kolom Custom');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await sleep(200);
+    await clickByText(pageA, 'button', 'Ok');
+    await sleep(1400);
+
+    const columnSaved = await pageA.evaluate(async () => {
+        const projectId = window.location.pathname.split('/').pop();
+        const state = await (await fetch(`/api/projects/${projectId}/export/json`)).json();
+        const column = (state.custom_columns || []).find((item) => item.name === 'QA Level');
+        const resource = (state.resources || []).find((item) => item.name === 'QA Kolom Custom');
+        return {
+            hasColumn: !!column,
+            hasValue: !!(column && resource && resource.custom_values
+                && resource.custom_values[column.id] === 'Senior'),
+        };
+    });
+    log('FR-39 kolom custom + nilai resource tersimpan lewat dialog',
+        columnForm && valueFilled && columnSaved.hasColumn && columnSaved.hasValue,
+        `kolom=${columnSaved.hasColumn} nilai=${columnSaved.hasValue}`);
+
+    // buka ulang dialog: nilai tampil kembali di tab Custom Columns
+    const reopened = await pageA.evaluate(() => {
+        // pilih div terdalam yang memuat nama resource (baris daftar resource)
+        const matches = [...document.querySelectorAll('div')]
+            .filter((el) => el.querySelector('span.truncate')?.textContent === 'QA Kolom Custom');
+        const row = matches[matches.length - 1];
+        if (!row) return false;
+        row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        return true;
+    });
+    await sleep(700);
+    const tabClicked = await clickByText(pageA, 'button', 'Custom Columns');
+    await sleep(300);
+    const persisted = await pageA.evaluate(() => {
+        const dialogOpen = [...document.querySelectorAll('h3')]
+            .some((heading) => heading.textContent.trim() === 'Resources');
+        const row = [...document.querySelectorAll('tbody tr')]
+            .find((tr) => tr.textContent.includes('QA Level'));
+        return { dialogOpen, value: row?.querySelector('input[type="text"]')?.value ?? null };
+    });
+    log('FR-39 nilai kolom tampil lagi saat dialog resource dibuka ulang',
+        reopened && tabClicked && persisted.value === 'Senior',
+        `reopened=${reopened} tab=${tabClicked} dialog=${persisted.dialogOpen} value=${persisted.value}`);
+    await clickByText(pageA, 'button', 'Cancel');
+    await sleep(300);
+
+    // bersihkan resource & kolom uji
+    const cleanupColumn = await pageA.evaluate(async () => {
+        const projectId = window.location.pathname.split('/').pop();
+        const state = await (await fetch(`/api/projects/${projectId}/export/json`)).json();
+        const resource = (state.resources || []).find((item) => item.name === 'QA Kolom Custom');
+        if (resource) {
+            await fetch(`/api/projects/${projectId}/resources/${resource.id}`, { method: 'DELETE' });
+        }
+        const column = (state.custom_columns || []).find((item) => item.name === 'QA Level');
+        if (column) {
+            await fetch(`/api/projects/${projectId}/custom-columns/${column.id}`, { method: 'DELETE' });
+        }
+        return true;
+    });
+    log('FR-39 resource & kolom uji dibersihkan', cleanupColumn);
+
     await clickByText(pageA, 'button', 'PERT chart');
     await sleep(600);
     const pertNodes = await pageA.evaluate(() => document.body.innerText.includes('Duration:'));

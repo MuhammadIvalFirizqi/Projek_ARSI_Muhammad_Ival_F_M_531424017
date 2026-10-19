@@ -1,3 +1,8 @@
+// Suntikkan runtime React Fast Refresh (HMR) untuk dev.
+// HTML dilayani oleh Blade (bukan transformIndexHtml Vite), jadi tanpa impor ini
+// mount React gagal dengan "@vitejs/plugin-react can't detect preamble".
+// Saat `vite build`, modul virtual ini kosong jadi tidak berpengaruh di produksi.
+import '@vitejs/plugin-react/preamble';
 import { createInertiaApp } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 import '../css/app.css';

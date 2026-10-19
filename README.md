@@ -7,6 +7,24 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Menjalankan aplikasi
+
+Prasyarat: **PHP ^8.3**, **Composer**, dan **Node.js + npm**.
+
+```bash
+composer run setup   # install dependensi, buat .env + APP_KEY, migrasi SQLite, build aset
+composer run dev      # nyalakan server (:8000), Vite, Reverb, dan worker queue
+```
+
+Buka <http://127.0.0.1:8000>.
+
+Catatan:
+
+- Tanpa `composer run dev`, cukup `php artisan serve` — situs tetap jalan, hanya fitur real-time (Reverb) yang mati sampai `php artisan reverb:start` dijalankan.
+- Basis data bawaan SQLite (`database/database.sqlite`, dibuat otomatis saat migrasi). Ubah `DB_CONNECTION` di `.env` bila ingin memakai MySQL.
+- Tes: `composer run test` (atau `php artisan test`).
+- Periksa alur lengkap di browser: `node scripts/verify.mjs` (butuh Chrome, server sedang berjalan).
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

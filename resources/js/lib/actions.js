@@ -203,6 +203,7 @@ export function createResourceAction(state, draft) {
         standard_rate: draft.standard_rate ?? 0,
         color: draft.color ?? null,
         days_off: draft.days_off || [],
+        custom_values: draft.custom_values || {},
         assignments: [],
     };
 
@@ -252,6 +253,95 @@ export function deleteResourceAction(state, id) {
             })),
         bwd: step('POST', `${projectUrl(state)}/resources`, resource,
             (current) => ({ ...current, resources: [...current.resources, resource] })),
+    };
+}
+
+// ----------------------------------------------------- kolom tambahan
+
+const columnsUrl = (state) => `${projectUrl(state)}/custom-columns`;
+
+export function createCustomColumnAction(state, draft) {
+    const target = draft.target || 'resource';
+    const column = {
+        id: draft.id || uid(),
+        target,
+        name: draft.name || 'Kolom baru',
+        type: draft.type || 'text',
+        position: (state.custom_columns || []).filter((item) => item.target === target).length,
+    };
+
+    return {
+        fwd: step('POST', columnsUrl(state), column, (current) => ({
+            ...current,
+            custom_columns: [...(current.custom_columns || []), column],
+        })),
+        bwd: step('DELETE', `${columnsUrl(state)}/${column.id}`, undefined, (current) => ({
+            ...current,
+            custom_columns: (current.custom_columns || []).filter((item) => item.id !== column.id),
+        })),
+        createdId: column.id,
+    };
+}
+
+export function patchCustomColumnAction(state, id, patch) {
+    const column = (state.custom_columns || []).find((item) => item.id === id);
+    if (!column) return null;
+    const before = {};
+    Object.keys(patch).forEach((key) => { before[key] = column[key]; });
+
+    return {
+        fwd: step('PUT', `${columnsUrl(state)}/${id}`, patch, (current) => ({
+            ...current,
+            custom_columns: applyPatch(current.custom_columns || [], id, patch),
+        })),
+        bwd: step('PUT', `${columnsUrl(state)}/${id}`, before, (current) => ({
+            ...current,
+            custom_columns: applyPatch(current.custom_columns || [], id, before),
+        })),
+    };
+}
+
+export function deleteCustomColumnAction(state, id) {
+    const column = (state.custom_columns || []).find((item) => item.id === id);
+    if (!column) return null;
+
+    // Nilai kolom pada tiap resource ikut terhapus server; simpan salinannya
+    // supaya undo dapat mengembalikan kolom beserta nilainya.
+    const snapshots = state.resources
+        .filter((resource) => resource.custom_values
+            && Object.prototype.hasOwnProperty.call(resource.custom_values, id))
+        .map((resource) => ({ id: resource.id, custom_values: { ...resource.custom_values } }));
+
+    const strip = (current) => ({
+        ...current,
+        custom_columns: (current.custom_columns || []).filter((item) => item.id !== id),
+        resources: current.resources.map((resource) => {
+            if (!resource.custom_values
+                || !Object.prototype.hasOwnProperty.call(resource.custom_values, id)) return resource;
+            const { [id]: removed, ...rest } = resource.custom_values;
+            void removed;
+            return { ...resource, custom_values: rest };
+        }),
+    });
+
+    const restore = (current) => ({
+        ...current,
+        custom_columns: [...(current.custom_columns || []), column],
+        resources: current.resources.map((resource) => {
+            const snapshot = snapshots.find((item) => item.id === resource.id);
+            return snapshot ? { ...resource, custom_values: { ...snapshot.custom_values } } : resource;
+        }),
+    });
+
+    const bwd = [step('POST', columnsUrl(state), column, restore)];
+    snapshots.forEach((snapshot) => {
+        bwd.push(step('PUT', `${projectUrl(state)}/resources/${snapshot.id}`,
+            { custom_values: snapshot.custom_values }, null));
+    });
+
+    return {
+        fwd: step('DELETE', `${columnsUrl(state)}/${id}`, undefined, strip),
+        bwd,
     };
 }
 

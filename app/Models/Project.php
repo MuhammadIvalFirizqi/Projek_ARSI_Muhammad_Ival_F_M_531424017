@@ -55,6 +55,11 @@ class Project extends Model
         return $this->hasMany(Dependency::class);
     }
 
+    public function customColumns(): HasMany
+    {
+        return $this->hasMany(CustomColumn::class)->orderBy('position')->orderBy('id');
+    }
+
     public function changeLogs(): HasMany
     {
         return $this->hasMany(ChangeLog::class);

@@ -3,12 +3,19 @@ import { uid } from '../../lib/dates';
 
 /**
  * Dialog "Resources": tab General (Name, Phone, Mail, Default role, Standard rate),
- * Days off, Custom Columns (FR-35..FR-38).
+ * Days off, Custom Columns (FR-35..FR-39).
  */
-export default function ResourcesDialog({ state, view, resourceId, onClose, onSave, onDelete }) {
+export default function ResourcesDialog({
+    state, view, resourceId, onClose, onSave, onDelete,
+    onCreateColumn, onPatchColumn, onDeleteColumn,
+}) {
     const existing = state.resources.find((item) => item.id === resourceId);
     const [tab, setTab] = useState('general');
     const [form, setForm] = useState(null);
+    const [adding, setAdding] = useState(false);
+    const [draft, setDraft] = useState({ name: '', type: 'text' });
+    const [editingId, setEditingId] = useState(null);
+    const [editDraft, setEditDraft] = useState({ name: '', type: 'text' });
 
     useEffect(() => {
         setForm(existing
@@ -21,6 +28,7 @@ export default function ResourcesDialog({ state, view, resourceId, onClose, onSa
                 standard_rate: existing.standard_rate || 0,
                 color: existing.color || '',
                 days_off: (existing.days_off || []).map((day) => ({ ...day })),
+                custom_values: { ...(existing.custom_values || {}) },
             }
             : {
                 id: null,
@@ -31,13 +39,82 @@ export default function ResourcesDialog({ state, view, resourceId, onClose, onSa
                 standard_rate: 0,
                 color: '',
                 days_off: [],
+                custom_values: {},
             });
         setTab('general');
+        setAdding(false);
+        setEditingId(null);
+        setDraft({ name: '', type: 'text' });
     }, [resourceId]);
 
     if (!form) return null;
 
     const update = (patch) => setForm((current) => ({ ...current, ...patch }));
+
+    // Definisi kolom tambahan bersifat proyek (PRD: CustomColumn), nilai per resource.
+    const columns = (state.custom_columns || []).filter((column) => column.target === 'resource');
+
+    const valueInput = (column) => {
+        const value = (form.custom_values || {})[column.id];
+        const setValue = (next) => update({ custom_values: { ...(form.custom_values || {}), [column.id]: next } });
+
+        if (column.type === 'boolean') {
+            return (
+                <input
+                    type="checkbox"
+                    checked={value === true || value === 'true'}
+                    onChange={(e) => setValue(e.target.checked)}
+                />
+            );
+        }
+        if (column.type === 'number') {
+            return (
+                <input
+                    type="number"
+                    className={input}
+                    value={value ?? ''}
+                    onChange={(e) => setValue(e.target.value === '' ? null : Number(e.target.value))}
+                />
+            );
+        }
+        if (column.type === 'date') {
+            return (
+                <input
+                    type="date"
+                    className={input}
+                    value={value || ''}
+                    onChange={(e) => setValue(e.target.value || null)}
+                />
+            );
+        }
+        return <input type="text" className={input} value={value ?? ''} onChange={(e) => setValue(e.target.value)} />;
+    };
+
+    const saveDraftColumn = () => {
+        if (!draft.name.trim()) {
+            window.alert('Nama kolom wajib diisi.');
+            return;
+        }
+        onCreateColumn({ name: draft.name.trim(), type: draft.type, target: 'resource' });
+        setDraft({ name: '', type: 'text' });
+        setAdding(false);
+    };
+
+    const saveEditColumn = (column) => {
+        if (!editDraft.name.trim()) {
+            window.alert('Nama kolom wajib diisi.');
+            return;
+        }
+        onPatchColumn(column.id, { name: editDraft.name.trim(), type: editDraft.type });
+        setEditingId(null);
+    };
+
+    const removeColumn = (column) => {
+        const message = `Hapus kolom "${column.name}" beserta nilainya pada semua resource?`;
+        if (!window.confirm(message)) return;
+        onDeleteColumn(column.id);
+        if (editingId === column.id) setEditingId(null);
+    };
 
     const submit = () => {
         if (!form.name.trim()) {
@@ -53,6 +130,7 @@ export default function ResourcesDialog({ state, view, resourceId, onClose, onSa
             standard_rate: Number(form.standard_rate) || 0,
             color: form.color || null,
             days_off: form.days_off.filter((day) => day.start_date),
+            custom_values: form.custom_values || {},
         });
         onClose();
     };
@@ -192,8 +270,145 @@ export default function ResourcesDialog({ state, view, resourceId, onClose, onSa
                     )}
 
                     {tab === 'columns' && (
-                        <div className="rounded border border-dashed border-slate-300 p-4 text-slate-500">
-                            Custom Columns untuk resource merupakan fitur Rilis 2.0 (P2).
+                        <div>
+                            <div className="mb-2 text-slate-500">
+                                Kolom tambahan buatan pengguna (FR-39). Definisi kolom berlaku untuk semua resource;
+                                nilai pada resource ini disimpan saat tombol Ok.
+                            </div>
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-left text-xs text-slate-500">
+                                        <th className="py-1">Name</th>
+                                        <th className="w-32 py-1">Type</th>
+                                        <th className="py-1">Value</th>
+                                        <th className="w-32 py-1" />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {columns.map((column) => (
+                                        editingId === column.id ? (
+                                            <tr key={column.id} className="border-t border-slate-100">
+                                                <td className="py-1.5">
+                                                    <input
+                                                        className={input}
+                                                        value={editDraft.name}
+                                                        onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+                                                    />
+                                                </td>
+                                                <td className="py-1.5">
+                                                    <select
+                                                        className={input}
+                                                        value={editDraft.type}
+                                                        onChange={(e) => setEditDraft({ ...editDraft, type: e.target.value })}
+                                                    >
+                                                        {TYPE_OPTIONS.map(([id, label]) => (
+                                                            <option key={id} value={id}>{label}</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="py-1.5 text-xs text-slate-400">—</td>
+                                                <td className="whitespace-nowrap py-1.5 text-right">
+                                                    <button
+                                                        type="button"
+                                                        className="text-blue-600 hover:underline"
+                                                        onClick={() => saveEditColumn(column)}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="ml-2 text-slate-500 hover:underline"
+                                                        onClick={() => setEditingId(null)}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <tr key={column.id} className="border-t border-slate-100">
+                                                <td className="py-1.5">{column.name}</td>
+                                                <td className="py-1.5 text-xs text-slate-500">
+                                                    {TYPE_OPTIONS.find(([id]) => id === column.type)?.[1] || column.type}
+                                                </td>
+                                                <td className="py-1.5">{valueInput(column)}</td>
+                                                <td className="whitespace-nowrap py-1.5 text-right">
+                                                    <button
+                                                        type="button"
+                                                        className="text-blue-600 hover:underline"
+                                                        onClick={() => {
+                                                            setEditingId(column.id);
+                                                            setEditDraft({ name: column.name, type: column.type });
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="ml-2 text-red-600 hover:underline"
+                                                        onClick={() => removeColumn(column)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    ))}
+                                    {columns.length === 0 && !adding && (
+                                        <tr>
+                                            <td colSpan={4} className="py-3 text-slate-400">
+                                                Belum ada kolom. Klik "+ Add column" untuk menambah.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+
+                            {adding ? (
+                                <div className="mt-3 flex items-end gap-2 rounded border border-slate-200 p-3">
+                                    <Field label="Name" className="flex-1">
+                                        <input
+                                            className={input}
+                                            autoFocus
+                                            placeholder="mis. Tingkat pengalaman"
+                                            value={draft.name}
+                                            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                                        />
+                                    </Field>
+                                    <Field label="Type" className="w-36">
+                                        <select
+                                            className={input}
+                                            value={draft.type}
+                                            onChange={(e) => setDraft({ ...draft, type: e.target.value })}
+                                        >
+                                            {TYPE_OPTIONS.map(([id, label]) => (
+                                                <option key={id} value={id}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </Field>
+                                    <button
+                                        type="button"
+                                        className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white"
+                                        onClick={saveDraftColumn}
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded border border-slate-300 px-3 py-1.5 text-sm"
+                                        onClick={() => setAdding(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="mt-3 rounded border border-slate-300 px-3 py-1.5 hover:bg-slate-50"
+                                    onClick={() => setAdding(true)}
+                                >
+                                    + Add column
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -217,6 +432,13 @@ export default function ResourcesDialog({ state, view, resourceId, onClose, onSa
 }
 
 const input = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none';
+
+const TYPE_OPTIONS = [
+    ['text', 'Text'],
+    ['number', 'Number'],
+    ['date', 'Date'],
+    ['boolean', 'Checkbox'],
+];
 
 function Field({ label, children, className = '', required }) {
     return (

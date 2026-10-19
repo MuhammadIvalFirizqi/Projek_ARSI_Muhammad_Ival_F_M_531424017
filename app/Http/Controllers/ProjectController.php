@@ -172,10 +172,27 @@ class ProjectController extends Controller
             }
 
             $resourceMap = [];
+            $columnMap = [];
+            foreach ($project->customColumns as $column) {
+                $newColumn = $column->replicate(['id', 'project_id']);
+                $newColumn->id = (string) \Illuminate\Support\Str::uuid();
+                $newColumn->project_id = $new->id;
+                $newColumn->save();
+                $columnMap[$column->id] = $newColumn->id;
+            }
+
             foreach ($project->resources as $resource) {
                 $newResource = $resource->replicate(['id', 'project_id']);
                 $newResource->id = (string) \Illuminate\Support\Str::uuid();
                 $newResource->project_id = $new->id;
+
+                // Nilai kolom tambahan ikut dipindahkan dengan kunci kolom baru.
+                $values = [];
+                foreach ($resource->custom_values ?? [] as $key => $value) {
+                    $values[$columnMap[$key] ?? $key] = $value;
+                }
+                $newResource->custom_values = $values === [] ? null : $values;
+
                 $newResource->save();
                 $resourceMap[$resource->id] = $newResource->id;
 
